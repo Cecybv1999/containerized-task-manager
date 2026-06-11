@@ -1,0 +1,102 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # ─────────────────────────────────────────────
+  # PostgreSQL Database
+  # ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: taskmanager-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-taskdb}
+      POSTGRES_USER: ${DB_USER:-taskuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-taskuser} -d ${DB_NAME:-taskdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - backend-net
+    logging: *default-logging
+
+  # ─────────────────────────────────────────────
+  # Backend API (Node.js / Express)
+  # ─────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    image: taskmanager-backend:latest
+    container_name: taskmanager-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-taskdb}
+      DB_USER: ${DB_USER:-taskuser}
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    networks:
+      - backend-net
+      - frontend-net
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+  # ─────────────────────────────────────────────
+  # Frontend (React + Nginx)
+  # ─────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    image: taskmanager-frontend:latest
+    container_name: taskmanager-ui
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    networks:
+      - frontend-net
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+
+
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  backend-net:
+    driver: bridge
+    name: taskmanager-backend
+  frontend-net:
+    driver: bridge
+    name: taskmanager-frontend
