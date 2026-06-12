@@ -8,7 +8,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository_owner }}/taskmanager
 
 jobs:
   # ─────────────────────────────────────────────
@@ -33,14 +32,12 @@ jobs:
           - 5432:5432
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: backend/package-lock.json
+          node-version: "24"
 
       - name: Install backend dependencies
         working-directory: backend
@@ -82,7 +79,10 @@ jobs:
         service: [backend, frontend]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+
+      - name: Set lowercase image prefix
+        run: echo "IMAGE_PREFIX=$(echo '${{ github.repository_owner }}/taskmanager' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -127,12 +127,15 @@ jobs:
       security-events: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+
+      - name: Set lowercase image ref
+        run: echo "IMAGE_REF=$(echo '${{ env.REGISTRY }}/${{ github.repository_owner }}/taskmanager-backend:latest' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Run Trivy vulnerability scanner (backend)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend:latest"
+          image-ref: "${{ env.IMAGE_REF }}"
           format: "sarif"
           output: "trivy-results.sarif"
 
