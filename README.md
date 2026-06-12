@@ -16,8 +16,8 @@ A production-grade 3-tier application demonstrating Docker containerization, ser
 
 | Service | Image | Description |
 |---------|-------|-------------|
-| `frontend` | `node:20-alpine` → `nginx:1.25-alpine` | React SPA, multi-stage build |
-| `backend` | `node:20-alpine` | Express REST API with pg driver |
+| `frontend` | `node:24-alpine` → `nginx:1.25-alpine` | React SPA, multi-stage build |
+| `backend` | `node:24-alpine` | Express REST API with pg driver |
 | `postgres` | `postgres:16-alpine` | Persistent relational database |
 
 ## Quick Start
@@ -30,11 +30,13 @@ A production-grade 3-tier application demonstrating Docker containerization, ser
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/containerizedmicroservices.git
-cd containerizedmicroservices
+git clone https://github.com/Cecybv1999/containerized-task-manager.git
+cd containerized-task-manager
 
-# Copy environment file
+# Copy environment file (used by Docker Compose)
 cp .env.example .env
+# For running the backend locally without Docker, also copy:
+# cp backend/.env.example backend/.env
 
 # Build and start all services
 docker compose up --build
@@ -58,7 +60,9 @@ docker compose down -v       # stops + removes volumes (wipes DB)
 
 ## API Reference
 
-Base URL: `http://localhost:3001/api`
+Base URL: `http://localhost:3000/api`
+
+> API requests are proxied through Nginx on port 3000. The backend (port 3001) is internal-only and not exposed to the host.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -67,12 +71,13 @@ Base URL: `http://localhost:3001/api`
 | `POST` | `/tasks` | Create task |
 | `PATCH` | `/tasks/:id` | Update task fields |
 | `DELETE` | `/tasks/:id` | Delete task |
-| `GET` | `/health` | Health check (DB connectivity) |
+
+> **Health check:** `GET http://localhost:3000/health` returns Nginx status. The backend's DB-connected health check is available internally at `http://backend:3001/health` within the Docker network.
 
 ### Example: Create a task
 
 ```bash
-curl -X POST http://localhost:3001/api/tasks \
+curl -X POST http://localhost:3000/api/tasks \
   -H "Content-Type: application/json" \
   -d '{"title": "Deploy to production", "priority": "high"}'
 ```
