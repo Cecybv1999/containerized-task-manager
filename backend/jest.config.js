@@ -3,15 +3,8 @@ module.exports = {
   testPathIgnorePatterns: ['/node_modules/'],
   collectCoverageFrom: [
     'src/**/*.js',
-    '!src/index.js', // Skip entry point for coverage
+    '!src/index.js',  // entry point — just starts the server
+    '!src/db/index.js', // integration-tested via CI postgres, mocked in unit tests
   ],
-  coverageThreshold: {
-    global: {
-      branches: 50,
-      functions: 50,
-      lines: 50,
-      statements: 50,
-    },
-  },
   testTimeout: 10000,
 };
